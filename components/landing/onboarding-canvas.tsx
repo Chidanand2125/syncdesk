@@ -13,7 +13,7 @@ import {
   Check,
   Clock,
   Mail,
-  Slack,
+  Webhook,
   type LucideIcon,
 } from 'lucide-react'
 import type { SourceType } from '@/lib/types'
@@ -201,7 +201,7 @@ export function OnboardingCanvas() {
                         : 'border-border bg-card text-muted-foreground',
                     )}
                   >
-                    <Slack className="h-4 w-4" /> Slack
+                    <Webhook className="h-4 w-4" /> Slack
                   </button>
                 </div>
                 <div className="flex flex-col gap-2">
