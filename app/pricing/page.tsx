@@ -157,8 +157,15 @@ export default function PricingPage() {
             })
 
             if (!verifyRes.ok) {
-              const errData = await verifyRes.json().catch(() => ({}))
-              throw new Error(errData.error || 'Signature verification failed')
+              const text = await verifyRes.text().catch(() => '')
+              let errMsg = 'Signature verification failed'
+              try {
+                const json = JSON.parse(text)
+                errMsg = json.error || errMsg
+              } catch {
+                errMsg = `HTTP ${verifyRes.status}: ${text.substring(0, 100)}`
+              }
+              throw new Error(errMsg)
             }
 
             toast.success('Successfully upgraded your account!', {
@@ -230,8 +237,15 @@ export default function PricingPage() {
       })
 
       if (!verifyRes.ok) {
-        const errData = await verifyRes.json().catch(() => ({}))
-        throw new Error(errData.error || 'Failed to update plan status')
+        const text = await verifyRes.text().catch(() => '')
+        let errMsg = 'Failed to update plan status'
+        try {
+          const json = JSON.parse(text)
+          errMsg = json.error || errMsg
+        } catch {
+          errMsg = `HTTP ${verifyRes.status}: ${text.substring(0, 100)}`
+        }
+        throw new Error(errMsg)
       }
 
       toast.success('Successfully upgraded your account (Mock)!', {
