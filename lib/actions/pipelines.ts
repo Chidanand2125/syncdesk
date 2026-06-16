@@ -18,7 +18,7 @@ async function getContext() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('organization_id')
+    .select('organization_id:org_id')
     .eq('id', user.id)
     .single()
 
@@ -46,6 +46,27 @@ export async function createPipeline(input: PipelineInput): Promise<ActionResult
 
   const invalid = validate(input)
   if (invalid) return { ok: false, error: invalid }
+
+  // Check pipeline capacity (Limit of 1 pipeline on the Free plan, unlimited on Pro/Business)
+  const { count, error: countError } = await supabase
+    .from('export_pipelines')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+
+  if (countError) return { ok: false, error: countError.message }
+
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .select('billing_status')
+    .eq('id', organizationId)
+    .single()
+
+  if (orgError) return { ok: false, error: orgError.message }
+
+  const isPremium = org?.billing_status === 'pro' || org?.billing_status === 'business'
+  if (!isPremium && count !== null && count >= 1) {
+    return { ok: false, error: 'LIMIT_REACHED' }
+  }
 
   const { error } = await supabase.from('export_pipelines').insert({
     organization_id: organizationId,

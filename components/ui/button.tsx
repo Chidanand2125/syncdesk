@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from 'react'
 import { Button as ButtonPrimitive } from '@base-ui/react/button'
 import { cva, type VariantProps } from 'class-variance-authority'
@@ -63,6 +65,7 @@ function Button({
     return (
       <ButtonPrimitive
         data-slot="button"
+        nativeButton={false}
         className={cn(buttonVariants({ variant, size, className }))}
         render={(renderProps) =>
           React.cloneElement(child, {

@@ -17,9 +17,10 @@ import {
   MoreVertical,
   Pencil,
   Play,
-  Slack,
+  MessageSquare,
   Trash2,
 } from 'lucide-react'
+
 import type { ExportPipeline } from '@/lib/types'
 import { getSourceMeta } from './source-meta'
 import { deletePipeline, setPipelineActive } from '@/lib/actions/pipelines'
@@ -125,7 +126,7 @@ export function PipelineCard({
       {/* Status row */}
       <div className="flex flex-wrap items-center gap-2">
         {pipeline.is_active ? (
-          <Badge className="gap-1.5 border-success/30 bg-success/10 text-success-foreground hover:bg-success/10 [&]:text-foreground">
+          <Badge className="gap-1.5 border-success/30 bg-success/10 hover:bg-success/10 [&]:text-success-foreground">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
@@ -142,7 +143,8 @@ export function PipelineCard({
         {pipeline.delivery_type !== 'none' && (
           <Badge variant="outline" className="gap-1.5">
             {pipeline.delivery_type === 'slack' ? (
-              <Slack className="h-3 w-3" />
+              <MessageSquare className="h-3 w-3" />
+
             ) : (
               <Mail className="h-3 w-3" />
             )}

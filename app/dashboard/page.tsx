@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   // Profile (RLS-scoped). Created automatically by the signup trigger.
   const { data: profile } = await supabase
     .from('profiles')
-    .select('*')
+    .select('*, organization_id:org_id')
     .eq('id', user.id)
     .single()
 

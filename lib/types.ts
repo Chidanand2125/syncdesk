@@ -6,9 +6,10 @@ export type MemberRole = 'owner' | 'admin' | 'member'
 export interface Organization {
   id: string
   name: string
-  slug: string
+  billing_status: string
   created_at: string
 }
+
 
 export interface Profile {
   id: string

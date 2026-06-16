@@ -167,9 +167,14 @@ export default async function HomePage() {
       </main>
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 text-sm text-muted-foreground">
+        <div className="mx-auto flex max-w-6xl flex-col sm:flex-row items-center justify-between px-6 py-6 text-sm text-muted-foreground gap-4">
           <span>SyncDesk</span>
-          <span>Tenant-isolated · Secure by design</span>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+            <Link href="/refund" className="hover:text-foreground transition-colors">Refund</Link>
+            <span className="hidden sm:inline-block">· Tenant-isolated · Secure by design</span>
+          </div>
         </div>
       </footer>
     </div>

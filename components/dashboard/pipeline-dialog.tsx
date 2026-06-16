@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+
 import {
   Dialog,
   DialogContent,
@@ -30,7 +32,8 @@ import type {
   SourceType,
 } from '@/lib/types'
 import { createPipeline, updatePipeline } from '@/lib/actions/pipelines'
-import { ArrowLeft, ArrowRight, Check, Clock, Mail, Slack } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Clock, Mail, MessageSquare } from 'lucide-react'
+
 import { toast } from 'sonner'
 
 const DATASETS = listMockDatasets()
@@ -86,7 +89,9 @@ export function PipelineDialog({
   const [step, setStep] = useState(1)
   const [state, setState] = useState<FormState>(DEFAULT_STATE)
   const [pending, startTransition] = useTransition()
+  const router = useRouter()
   const isEdit = Boolean(pipeline)
+
 
   useEffect(() => {
     if (!open) return
@@ -169,7 +174,15 @@ export function PipelineDialog({
         })
         onOpenChange(false)
       } else {
-        toast.error('Could not save', { description: res.error })
+        if (res.error === 'LIMIT_REACHED') {
+          toast.error('Pipeline limit reached', {
+            description: 'Free plan is limited to 1 pipeline. Redirecting to pricing...',
+          })
+          onOpenChange(false)
+          router.push('/pricing')
+        } else {
+          toast.error('Could not save', { description: res.error })
+        }
       }
     })
   }
@@ -289,7 +302,7 @@ export function PipelineDialog({
                 <Label>Dataset</Label>
                 <Select
                   value={state.dataset}
-                  onValueChange={(v) => patch({ dataset: v })}
+                  onValueChange={(v) => patch({ dataset: v ?? '' })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -374,7 +387,8 @@ export function PipelineDialog({
                         : 'border-border bg-card text-muted-foreground hover:border-primary/40',
                     )}
                   >
-                    <Slack className="h-4 w-4" /> Slack
+                    <MessageSquare className="h-4 w-4" /> Slack
+
                   </button>
                 </div>
 

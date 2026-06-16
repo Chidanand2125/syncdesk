@@ -35,10 +35,9 @@ function GoogleIcon() {
 export function AuthForm() {
   const router = useRouter()
   const supabase = createClient()
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
@@ -57,41 +56,55 @@ export function AuthForm() {
     if (error) {
       setGoogleLoading(false)
       toast.error('Google sign-in unavailable', {
-        description:
-          'Enable the Google provider in Supabase, or use email below.',
+        description: 'Please try email authentication.',
       })
     }
   }
 
-  async function handleEmail(e: React.FormEvent) {
-    e.preventDefault()
+  async function sendOtp(e?: React.FormEvent) {
+    if (e) e.preventDefault()
+    if (!email.trim()) return
+
     setLoading(true)
     try {
-      if (mode === 'sign-up') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectTo,
-            data: { full_name: fullName },
-          },
-        })
-        if (error) throw error
-        toast.success('Check your inbox', {
-          description: 'Confirm your email to finish creating your workspace.',
-        })
-        setMode('sign-in')
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (error) throw error
-        router.push('/dashboard')
-        router.refresh()
-      }
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: redirectTo,
+        },
+      })
+      if (error) throw error
+      setOtpSent(true)
+      toast.success('OTP Sent!', {
+        description: 'Please check your email for a 6-digit verification code.',
+      })
     } catch (err) {
-      toast.error('Authentication failed', {
+      toast.error('Failed to send OTP', {
+        description: err instanceof Error ? err.message : 'Please check your email address.',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function verifyOtp(e: React.FormEvent) {
+    e.preventDefault()
+    if (!otp.trim()) return
+
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: otp.trim(),
+        type: 'email',
+      })
+      if (error) throw error
+      toast.success('Successfully signed in!')
+      router.push('/dashboard')
+      router.refresh()
+    } catch (err) {
+      toast.error('Invalid OTP', {
         description: err instanceof Error ? err.message : 'Please try again.',
       })
     } finally {
@@ -101,91 +114,99 @@ export function AuthForm() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Button
-        type="button"
-        variant="outline"
-        className="h-11 w-full gap-2.5 border-border bg-card text-sm font-medium"
-        onClick={handleGoogle}
-        disabled={googleLoading || loading}
-      >
-        {googleLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <GoogleIcon />
-        )}
-        Continue with Google
-      </Button>
+      {!otpSent ? (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full gap-2.5 border-border bg-card text-sm font-medium"
+            onClick={handleGoogle}
+            disabled={googleLoading || loading}
+          >
+            {googleLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <GoogleIcon />
+            )}
+            Continue with Google
+          </Button>
 
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          or
-        </span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
-      <form onSubmit={handleEmail} className="flex flex-col gap-4">
-        {mode === 'sign-up' && (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="fullName">Full name</Label>
-            <Input
-              id="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Ada Lovelace"
-              autoComplete="name"
-            />
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              or
+            </span>
+            <div className="h-px flex-1 bg-border" />
           </div>
-        )}
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Work email</Label>
-          <Input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@company.com"
-            autoComplete="email"
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete={
-              mode === 'sign-up' ? 'new-password' : 'current-password'
-            }
-          />
-        </div>
-        <Button
-          type="submit"
-          className="h-11 w-full text-sm font-medium"
-          disabled={loading || googleLoading}
-        >
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {mode === 'sign-up' ? 'Create workspace' : 'Sign in'}
-        </Button>
-      </form>
 
-      <p className="text-center text-sm text-muted-foreground">
-        {mode === 'sign-up' ? 'Already have an account?' : 'New to SyncDesk?'}{' '}
-        <button
-          type="button"
-          onClick={() =>
-            setMode((m) => (m === 'sign-up' ? 'sign-in' : 'sign-up'))
-          }
-          className="font-medium text-primary underline-offset-4 hover:underline"
-        >
-          {mode === 'sign-up' ? 'Sign in' : 'Create one free'}
-        </button>
-      </p>
+          <form onSubmit={sendOtp} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="email">Work email</Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                autoComplete="email"
+              />
+            </div>
+            <Button
+              type="submit"
+              className="h-11 w-full text-sm font-medium"
+              disabled={loading || googleLoading}
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Send OTP Code
+            </Button>
+          </form>
+        </>
+      ) : (
+        <form onSubmit={verifyOtp} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="otp">Enter 6-digit OTP Code</Label>
+            <Input
+              id="otp"
+              type="text"
+              required
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="123456"
+              className="text-center text-lg tracking-[0.5em] font-semibold"
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground text-center mt-1">
+              Sent to <span className="font-medium">{email}</span>
+            </p>
+          </div>
+          <Button
+            type="submit"
+            className="h-11 w-full text-sm font-medium"
+            disabled={loading}
+          >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Verify &amp; Sign In
+          </Button>
+          <button
+            type="button"
+            onClick={() => sendOtp()}
+            disabled={loading}
+            className="text-center text-xs text-primary hover:underline mt-2"
+          >
+            Resend OTP Code
+          </button>
+          <button
+            type="button"
+            onClick={() => setOtpSent(false)}
+            disabled={loading}
+            className="text-center text-xs text-muted-foreground hover:underline"
+          >
+            Back to email
+          </button>
+        </form>
+      )}
     </div>
   )
 }

@@ -1,7 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+
 import {
   Avatar,
   AvatarFallback,
@@ -111,13 +114,36 @@ export function DashboardClient({
             <LayoutGrid className="h-4 w-4" />
             Pipelines
           </span>
+          <Link
+            href="/pricing"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors group"
+          >
+            <Zap className="h-4 w-4 text-primary group-hover:scale-110 transition-transform animate-pulse" />
+            Upgrade Plan
+          </Link>
         </nav>
 
         <div className="mt-auto rounded-lg bg-sidebar-accent/60 p-4">
           <p className="text-xs font-medium text-sidebar-foreground">
             {organization?.name ?? 'Your workspace'}
           </p>
-          <p className="mt-1 text-[11px] text-sidebar-foreground/60">
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className={cn(
+              "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide uppercase",
+              organization?.billing_status === 'pro'
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : organization?.billing_status === 'business'
+                  ? "bg-amber-500/20 text-amber-500 border border-amber-500/30"
+                  : "bg-muted text-muted-foreground border border-border"
+            )}>
+              {organization?.billing_status === 'pro'
+                ? 'Pro Plan'
+                : organization?.billing_status === 'business'
+                  ? 'Business Plan'
+                  : 'Free Plan'}
+            </span>
+          </div>
+          <p className="mt-2 text-[11px] text-sidebar-foreground/60">
             Tenant-isolated · RLS enforced
           </p>
         </div>
@@ -237,6 +263,17 @@ export function DashboardClient({
             )}
           </div>
         </main>
+
+        <footer className="border-t border-border p-6 text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span>&copy; {new Date().getFullYear()} SyncDesk</span>
+            <div className="flex items-center gap-4">
+              <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+              <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+              <Link href="/refund" className="hover:text-foreground transition-colors">Refund</Link>
+            </div>
+          </div>
+        </footer>
       </div>
 
       <PipelineDialog
