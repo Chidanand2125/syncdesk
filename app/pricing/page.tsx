@@ -161,7 +161,7 @@ export default function PricingPage() {
               let errMsg = 'Signature verification failed'
               try {
                 const json = JSON.parse(text)
-                errMsg = json.error || errMsg
+                errMsg = json.error || json.message || errMsg
               } catch {
                 errMsg = `HTTP ${verifyRes.status}: ${text.substring(0, 100)}`
               }
@@ -241,7 +241,7 @@ export default function PricingPage() {
         let errMsg = 'Failed to update plan status'
         try {
           const json = JSON.parse(text)
-          errMsg = json.error || errMsg
+          errMsg = json.error || json.message || errMsg
         } catch {
           errMsg = `HTTP ${verifyRes.status}: ${text.substring(0, 100)}`
         }
