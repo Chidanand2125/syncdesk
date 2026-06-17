@@ -225,6 +225,42 @@ export function DashboardClient({
     }
   }
 
+  async function handleExport(sourceType: 'database' | 'stripe', format: 'csv' | 'json' = 'csv') {
+    try {
+      const url = `/api/export?sourceType=${sourceType}&format=${format}`
+      const res = await fetch(url)
+      
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Connection failed')
+      }
+      
+      const blob = await res.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = downloadUrl
+      
+      const disposition = res.headers.get('content-disposition')
+      let filename = `${sourceType}-export.${format}`
+      if (disposition && disposition.indexOf('attachment') !== -1) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition)
+        if (matches != null && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '')
+        }
+      }
+      
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(downloadUrl)
+      a.remove()
+      
+      toast.success(`Exported ${sourceType} data successfully`)
+    } catch (err: any) {
+      toast.error(err.message || 'Connection failed')
+    }
+  }
 
   const stats = useMemo(() => {
     const active = pipelines.filter((p) => p.is_active).length
@@ -393,9 +429,8 @@ export function DashboardClient({
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {/* Database Source */}
-                <button
-                  onClick={() => setDbModalOpen(true)}
-                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:border-primary/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                <div
+                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:border-primary/50 hover:shadow-md"
                 >
                   <div className="flex w-full items-start justify-between">
                     <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
@@ -428,12 +463,21 @@ export function DashboardClient({
                       Postgres tables & views
                     </span>
                   </div>
-                </button>
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setDbModalOpen(true)} className="flex-1 text-xs">
+                      {isDbConnected ? 'Configure' : 'Connect'}
+                    </Button>
+                    {isDbConnected && (
+                      <Button variant="default" size="sm" onClick={() => handleExport('database', 'csv')} className="flex-1 text-xs">
+                        Export CSV
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
                 {/* Stripe Source */}
-                <button
-                  onClick={() => setStripeModalOpen(true)}
-                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:border-primary/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                <div
+                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:border-primary/50 hover:shadow-md"
                 >
                   <div className="flex w-full items-start justify-between">
                     <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
@@ -466,7 +510,17 @@ export function DashboardClient({
                       Charges & subscriptions
                     </span>
                   </div>
-                </button>
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setStripeModalOpen(true)} className="flex-1 text-xs">
+                      {isStripeConnected ? 'Configure' : 'Connect'}
+                    </Button>
+                    {isStripeConnected && (
+                      <Button variant="default" size="sm" onClick={() => handleExport('stripe', 'json')} className="flex-1 text-xs">
+                        Export JSON
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
                 {/* Custom API Source */}
                 <div
