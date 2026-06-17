@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -26,12 +27,26 @@ import {
   Repeat,
   Rows3,
   Zap,
+  CreditCard,
+  Globe,
 } from 'lucide-react'
 import type { ExportPipeline, Organization, Profile } from '@/lib/types'
 import { PipelineCard } from './pipeline-card'
 import { PipelineDialog } from './pipeline-dialog'
 import { RunDialog } from './run-dialog'
 import { signOut } from '@/lib/actions/auth'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
+
 
 function StatCard({
   label,
@@ -70,6 +85,146 @@ export function DashboardClient({
   const [editing, setEditing] = useState<ExportPipeline | null>(null)
   const [running, setRunning] = useState<ExportPipeline | null>(null)
   const [runOpen, setRunOpen] = useState(false)
+
+  const [dbModalOpen, setDbModalOpen] = useState(false)
+  const [stripeModalOpen, setStripeModalOpen] = useState(false)
+  
+  const [dbUri, setDbUri] = useState(organization?.database_connection_string ?? '')
+  const [stripeKey, setStripeKey] = useState(organization?.stripe_api_key_mock ?? '')
+  
+  const [isSavingDb, setIsSavingDb] = useState(false)
+  const [isSavingStripe, setIsSavingStripe] = useState(false)
+
+  const router = useRouter()
+
+  useEffect(() => {
+    if (organization) {
+      setDbUri(organization.database_connection_string ?? '')
+      setStripeKey(organization.stripe_api_key_mock ?? '')
+    }
+  }, [organization])
+
+  const isDbConnected = !!organization?.database_connection_string
+  const isStripeConnected = !!organization?.stripe_api_key_mock
+
+  async function handleSaveDb() {
+    setIsSavingDb(true)
+    try {
+      const res = await fetch('/api/connect-source', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'database',
+          value: dbUri,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to save database connection')
+      }
+
+      toast.success('Connected Successfully')
+      setDbModalOpen(false)
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred')
+    } finally {
+      setIsSavingDb(false)
+    }
+  }
+
+  async function handleDisconnectDb() {
+    setIsSavingDb(true)
+    try {
+      const res = await fetch('/api/connect-source', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'database',
+          value: '',
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to disconnect database')
+      }
+
+      toast.success('Disconnected Successfully')
+      setDbUri('')
+      setDbModalOpen(false)
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred')
+    } finally {
+      setIsSavingDb(false)
+    }
+  }
+
+  async function handleSaveStripe() {
+    setIsSavingStripe(true)
+    try {
+      const res = await fetch('/api/connect-source', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'stripe',
+          value: stripeKey,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to save Stripe key')
+      }
+
+      toast.success('Connected Successfully')
+      setStripeModalOpen(false)
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred')
+    } finally {
+      setIsSavingStripe(false)
+    }
+  }
+
+  async function handleDisconnectStripe() {
+    setIsSavingStripe(true)
+    try {
+      const res = await fetch('/api/connect-source', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'stripe',
+          value: '',
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to disconnect Stripe')
+      }
+
+      toast.success('Disconnected Successfully')
+      setStripeKey('')
+      setStripeModalOpen(false)
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred')
+    } finally {
+      setIsSavingStripe(false)
+    }
+  }
+
 
   const stats = useMemo(() => {
     const active = pipelines.filter((p) => p.is_active).length
@@ -230,6 +385,113 @@ export function DashboardClient({
               />
             </div>
 
+            {/* Data Sources */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-foreground">Data Sources</h2>
+                <span className="text-xs text-muted-foreground">Configure ingest credentials</span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {/* Database Source */}
+                <button
+                  onClick={() => setDbModalOpen(true)}
+                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:border-primary/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <div className="flex w-full items-start justify-between">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+                      <Database className="h-5 w-5" />
+                    </span>
+                    <span className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+                      isDbConnected
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        : "bg-muted text-muted-foreground border border-border"
+                    )}>
+                      {isDbConnected ? (
+                        <>
+                          <span className="relative mr-1.5 flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                          </span>
+                          Live Data Stream Active
+                        </>
+                      ) : (
+                        "Disconnected"
+                      )}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex flex-col">
+                    <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                      Database
+                    </span>
+                    <span className="mt-1 text-xs text-muted-foreground">
+                      Postgres tables & views
+                    </span>
+                  </div>
+                </button>
+
+                {/* Stripe Source */}
+                <button
+                  onClick={() => setStripeModalOpen(true)}
+                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-5 text-left shadow-sm transition-all hover:border-primary/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <div className="flex w-full items-start justify-between">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+                      <CreditCard className="h-5 w-5" />
+                    </span>
+                    <span className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+                      isStripeConnected
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        : "bg-muted text-muted-foreground border border-border"
+                    )}>
+                      {isStripeConnected ? (
+                        <>
+                          <span className="relative mr-1.5 flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                          </span>
+                          Live Data Stream Active
+                        </>
+                      ) : (
+                        "Disconnected"
+                      )}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex flex-col">
+                    <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                      Stripe
+                    </span>
+                    <span className="mt-1 text-xs text-muted-foreground">
+                      Charges & subscriptions
+                    </span>
+                  </div>
+                </button>
+
+                {/* Custom API Source */}
+                <div
+                  className="group relative flex flex-col justify-between rounded-xl border border-border bg-card/60 p-5 text-left shadow-sm"
+                >
+                  <div className="flex w-full items-start justify-between">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <Globe className="h-5 w-5" />
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      API Routing Active
+                    </span>
+                  </div>
+                  <div className="mt-4 flex flex-col">
+                    <span className="font-semibold text-foreground">
+                      Custom API
+                    </span>
+                    <span className="mt-1 text-xs text-muted-foreground">
+                      Any public JSON endpoint
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Pipeline grid / empty state */}
             {pipelines.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-card/50 py-20 text-center">
@@ -286,6 +548,131 @@ export function DashboardClient({
         open={runOpen}
         onOpenChange={setRunOpen}
       />
+
+      {/* Database Connection Modal */}
+      <Dialog open={dbModalOpen} onOpenChange={setDbModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configure Database Source</DialogTitle>
+            <DialogDescription>
+              Provide your PostgreSQL or Supabase connection string. SyncDesk connects over TLS to query tables and views.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="db_uri" className="text-sm font-medium">
+                Enter PostgreSQL/Supabase Connection URI
+              </Label>
+              <Input
+                id="db_uri"
+                placeholder="postgresql://user:password@host:5432/db"
+                value={dbUri}
+                onChange={(e) => setDbUri(e.target.value)}
+                disabled={isSavingDb}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Credentials are encrypted and isolated within your workspace's row.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex sm:justify-between items-center gap-2">
+            {isDbConnected && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDisconnectDb}
+                disabled={isSavingDb}
+              >
+                Disconnect
+              </Button>
+            )}
+            <div className="flex items-center gap-2 ml-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDbModalOpen(false)}
+                disabled={isSavingDb}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveDb}
+                disabled={isSavingDb}
+                className="gap-1.5"
+              >
+                {isSavingDb && (
+                  <span className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                )}
+                Save Connection
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stripe Connection Modal */}
+      <Dialog open={stripeModalOpen} onOpenChange={setStripeModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Configure Stripe Source</DialogTitle>
+            <DialogDescription>
+              Connect your Stripe account using a Restricted API Key. Only read permissions on charges and subscriptions are required.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="stripe_key" className="text-sm font-medium">
+                Enter Stripe Restricted API Key
+              </Label>
+              <Input
+                id="stripe_key"
+                type="password"
+                placeholder="rk_live_..."
+                value={stripeKey}
+                onChange={(e) => setStripeKey(e.target.value)}
+                disabled={isSavingStripe}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                For security, restrict this key to read-only access for charges and customers.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex sm:justify-between items-center gap-2">
+            {isStripeConnected && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDisconnectStripe}
+                disabled={isSavingStripe}
+              >
+                Disconnect
+              </Button>
+            )}
+            <div className="flex items-center gap-2 ml-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStripeModalOpen(false)}
+                disabled={isSavingStripe}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveStripe}
+                disabled={isSavingStripe}
+                className="gap-1.5"
+              >
+                {isSavingStripe && (
+                  <span className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                )}
+                Connect Stripe Account
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

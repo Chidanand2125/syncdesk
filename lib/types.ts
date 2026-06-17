@@ -7,8 +7,11 @@ export interface Organization {
   id: string
   name: string
   billing_status: string
+  database_connection_string?: string | null
+  stripe_api_key_mock?: string | null
   created_at: string
 }
+
 
 
 export interface Profile {
